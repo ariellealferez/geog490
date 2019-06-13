@@ -30,6 +30,10 @@ For this project we are looking at the relationship between Sea Surface Temperat
 [1]: https://www.esrl.noaa.gov/psd/data/gridded/data.cobe2.html
 COBE SST2 and Sea-Ice from NOAA/OAR/ESRL PSD, Boulder, Colorado found at their website.
 
+
+
+#### Load Packages for Project ####
+
 ```{r}
 # first load packages for analysis and map visualization 
 library(ncdf4)

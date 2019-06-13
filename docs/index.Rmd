@@ -98,6 +98,7 @@ august <- rotate(icec_august)
 feb <- rotate(icec_feb)
 ```
 
+### Map for August Averages ### 
 ```{r}
 # plot for August
 mapTheme <- rasterTheme(region=brewer.pal(8,"Blues"))
@@ -105,6 +106,7 @@ plt <- levelplot(august, margin=F, par.settings=mapTheme, main = "Long Term Mean
 plt + latticeExtra::layer(sp.lines(world_outline, col="gray30", lwd=1))
 ```
 
+### Map for February Averages ### 
 ```{r}
 # plot for Februarey
 mapTheme <- rasterTheme(region=brewer.pal(8,"Blues"))

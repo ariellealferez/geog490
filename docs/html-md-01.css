@@ -1,6 +1,6 @@
 /* html-md-01.css */
 
-div#TOC li {
+#TOC li {
   list-style-type: none;
   list-style-position: outside;
   list-style-image: none;
@@ -109,7 +109,7 @@ tt, code, pre {
 pre code {
    display: block; 
 /*   padding: 0.2em;*/
-/*   background-color:  #E0E0E0;*/
+/*   background-color:  #E0E0E0; 
 }
 
 code.r, code.noeval, code.cpp {
@@ -126,7 +126,7 @@ blockquote {
    padding-left: 1em;
    padding-right: 1em;
    border-left: 0.5em #E0E0E0 solid;
-   border-right: 0.5em #E0E0E0 solid
+   border-right: 0.5em #E0E0E0 solid;
   font-family: Times, TimesNewRoman, serif;
   background-color: white;
   font-size: 16px;
@@ -143,13 +143,13 @@ hr {
 
 @media print {
   * {
-    background-color: transparent !important;
-    background-image: none !important;
-    background-repeat: repeat !important;
-    background-attachment: scroll !important;
-    background-position: 0% 0% !important;
-    color: black !important;
-    filter: none !important;
+    background-color: transparent;
+    background-image: none;
+    background-repeat: repeat;
+    background-attachment: scroll;
+    background-position: 0 0;
+    color: black;
+    filter: none;
   }
   body, td {
     font-family: Times, TimesNewRoman, serif;
@@ -193,7 +193,7 @@ hr {
     font-weight: bold;
     font-style: italic;
   }
-  h6 {
+  h16 {
     font-family: "Times New Roman", Times, serif;
     font-size: 13px;
     font-weight: bolder;

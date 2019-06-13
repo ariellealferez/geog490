@@ -1,0 +1,388 @@
+---
+title: Final Project
+output:
+   html_document:
+     css: html-md-01.css
+     fig_caption: yes
+     highlight: haddock
+     number_sections: yes
+     theme: flatly
+     toc: yes
+     toc_float: true
+     collapsed: no
+---
+
+```{r set-options, echo=FALSE}
+options(width = 105)
+knitr::opts_chunk$set(dev='png', dpi=300, cache=TRUE)
+pdf.options(useDingbats = TRUE)
+```
+
+# Introduction # 
+For this project we are looking at the relationship between Sea Surface Temperature and Sea Ice Concentration over time. We will also look how the averages of these have changed over time. 
+
+- First, we visualize long term averages of both Sea Surface Temp and Ice Concentration for the months of February and August to illustrate the seasonality of the data set. 
+- Then, using several functions, we calculate averages of both Sea Surface Temp and Ice Concentration for the entire globe for each year there is data. 
+    - This involved calculating the weighted average for irregular
+    shapped cells of the global data. 
+
+## Data ## 
+[1]: https://www.esrl.noaa.gov/psd/data/gridded/data.cobe2.html
+COBE SST2 and Sea-Ice from NOAA/OAR/ESRL PSD, Boulder, Colorado found at their website.
+
+```{r}
+# first load packages for analysis and map visualization 
+library(ncdf4)
+library(ncdf.tools)
+library(raster)
+library(rasterVis)
+library(RColorBrewer)
+
+library(ggplot2)
+library(ggthemes)
+
+library(zoo)
+library(sf)
+```
+
+# Part 1
+
+## Mapping Long Term Average Sea Surface Temperature ## 
+```{r}
+# using the coastline shapefile as a base map to plot our data on 
+coast_path <- "/Users/geocog/Desktop/geog490/RData/ne_110m_coastline/"
+coast_name <- "ne_110m_coastline.shp"
+coast_file <- paste(coast_path, coast_name, sep="")
+
+# to plot the base map of the world 
+world_shp <- read_sf(coast_file)
+world_outline <- as(st_geometry(world_shp), Class="Spatial")
+```
+
+```{r}
+# read the Sea Surface Temp data - nc files
+sst_path <- "/Users/geocog/Desktop/geog490/RData/"
+sst_name <- "sst.mon.ltm.1981-2010.nc"
+sst_file <- paste(sst_path, sst_name, sep="")
+sst_august <- raster(sst_file, band = 8) # Get averages for August
+sst_feb <- raster(sst_file, band = 2) # Get averages for February 
+
+august1 <- rotate(sst_august)
+feb1 <- rotate(sst_feb)
+```
+
+### Map for August Averages ###
+```{r}
+mapTheme <- rasterTheme(region=brewer.pal(8,"Reds"))
+plt <- levelplot(august1, margin=F, par.settings=mapTheme, main = "Long Term Average SST - August 1981 to 2018")
+plt + latticeExtra::layer(sp.lines(world_outline, col="gray30", lwd=1))
+```
+### Map for February Averages ### 
+```{r}
+mapTheme <- rasterTheme(region=brewer.pal(8,"Reds"))
+plt <- levelplot(feb1, margin=F, par.settings=mapTheme, main = "Long Term Average SST - February 1981 to 2018")
+plt + latticeExtra::layer(sp.lines(world_outline, col="gray30", lwd=1))
+```
+
+Next we will create maps for Average Sea Ice Concentrations 
+
+## Maps of Sea Ice Concentrations ##
+```{r}
+icec_path <- "/Users/geocog/Desktop/geog490/RData/"
+icec_name <- "icec.mon.ltm.1981-2010.nc"
+icec_file <- paste(icec_path, icec_name, sep="")
+icec_august <- raster(icec_file, band = 8) # Get averages for August
+icec_feb <- raster(icec_file, band = 2) # Get averages for February 
+
+august <- rotate(icec_august)
+feb <- rotate(icec_feb)
+```
+
+```{r}
+# plot for August
+mapTheme <- rasterTheme(region=brewer.pal(8,"Blues"))
+plt <- levelplot(august, margin=F, par.settings=mapTheme, main = "Long Term Mean Ice Concentration - August 1981 to 2018")
+plt + latticeExtra::layer(sp.lines(world_outline, col="gray30", lwd=1))
+```
+
+```{r}
+# plot for Februarey
+mapTheme <- rasterTheme(region=brewer.pal(8,"Blues"))
+plt <- levelplot(feb, margin=F, par.settings=mapTheme, main = "Long Term Mean Ice Concentration - February 1981 to 2018")
+plt + latticeExtra::layer(sp.lines(world_outline, col="gray30", lwd=1))
+```
+
+# Part 2
+
+Now we will plot the yearly averages for both Sea Surface Temperature and Ice Concentration on a line graph to see how the values have changed since 1850.
+
+## Annual Averages for Ice Concentration ##
+
+```{r}
+# set path and filename
+ncpath <- "/Users/geocog/Desktop/geog490/RData/"
+ncname <- "icec.mon.mean"  
+ncfname <- paste(ncpath, ncname, ".nc", sep="")
+dname <- "icec" 
+```
+
+```{r}
+# open a netCDF file
+ncin <- nc_open(ncfname)
+```
+
+```{r}
+# get longitude and latitude
+lon <- ncvar_get(ncin,"lon")
+nlon <- dim(lon)
+lat <- ncvar_get(ncin,"lat")
+nlat <- dim(lat)
+```
+
+```{r}
+# get time
+time <- ncvar_get(ncin,"time")
+tunits <- ncatt_get(ncin,"time","units")
+nt <- dim(time)
+
+Years <- seq(1850, (2019-0.008333), by = 0.08333)
+```
+
+```{r}
+# convert time -- split the time units string into fields
+tustr <- strsplit(tunits$value, " ")
+ptime <- convertDateNcdf2R(time, unlist(tustr)[1], origin = 
+           as.POSIXct(unlist(tustr)[3], tz = "UTC"), time.format = "%Y-%m-%d")
+```
+
+```{r}
+# get ice data
+var_array <- ncvar_get(ncin,dname)
+dlname <- ncatt_get(ncin,dname,"long_name")
+dunits <- ncatt_get(ncin,dname,"units")
+fillvalue <- ncatt_get(ncin,dname,"_FillValue")
+dim(var_array)
+```
+
+```{r}
+# close the netCDF file
+nc_close(ncin)
+```
+
+### Set up for calculating area averages--define functions ###
+```{r}
+# radians function (convert degrees to radians)
+radians <- function(x) {
+  radians <- (2/360) * pi * x
+}
+
+grid_cell_area <- function(lat, lon) {
+  nlat <- length(lat)
+  nlon <- length(lon)
+  radius <- 6371.0087714
+  area <- rep(NA, nlat)
+  dlon <- abs(lon[1] - lon[2]) # longitudes assumed to be equally spaced
+  # check direction of latitudes
+  if (lat[1] <= 0.0) {
+    #print("increasing")
+    dlat1 <- lat[1] - -90.0
+    for (k in (1:nlat)) {
+      if (k < nlat) {
+        dlat2 <- (lat[k+1] - lat[k]) /2
+      } else {
+        dlat2 <- 90.0 - lat[nlat]
+      }
+      area[k] <- (radius ^ 2) * (radians(dlon) * 
+                   (sin(radians(lat[k] + dlat2)) - sin(radians(lat[k] - dlat1))) )
+      dlat1 <- dlat2
+    }
+    
+  } else {
+    #print("decreasing")
+    dlat1 <- 90.0 - lat[1]
+    for (k in (1:nlat)) {
+      if (k < nlat) {
+        dlat2 <- (lat[k] - lat[k+1]) /2
+      } else {
+        dlat2 <- lat[nlat] - -90.0
+      }
+      area[k] <- (radius ^ 2) * (radians(dlon) * 
+                   (sin(radians(lat[k] + dlat1)) - sin(radians(lat[k] - dlat2))) )
+      dlat1 <- dlat2
+    }
+  }
+  return(area)
+}
+```
+
+```{r}
+# get grid cell areas (in km^2)
+area <- grid_cell_area(lat, lon)
+head(area)
+```
+
+```{r}
+area_ave <- rep(0, nt)
+
+# loop over times
+for (n in (1:nt)) {
+  # loop over longitudes and latitudes
+  sum <- 0.0    # sum of weighted values
+  wsum <- 0.0   # sum of weights (areas)
+  for (j in (1:nlon)) {
+    for (k in (1:nlat)) {
+      if (!is.na(var_array[j,k,n])) {
+        # grid point isn't missing (i.e. not ocean), so accumulate values
+        sum <- sum + var_array[j,k,n] * area[k]
+        wsum <- wsum + area[k]
+        }
+    }
+  }
+  # calculate weighted average
+  area_ave[n] <- sum / wsum
+}
+print(head(area_ave))
+```
+
+```{r}
+# get total ice area 
+Ice_Concentration_Totals <- rep(0, nt)
+
+# loop over times
+for (n in (1:nt)) {
+  # loop over longitudes and latitudes
+  areasum <- 0.0   # sum of areas
+  for (j in (1:nlon)) {
+    for (k in (1:nlat)) {
+      if (!is.na(var_array[j,k,n])) {
+        # grid point isn't missing (i.e. not ocean), so accumulate areas if above 0 degC
+        Ice_Concentration_Totals[n] <- Ice_Concentration_Totals[n] + area[k]*var_array[j,k,n]
+      }
+    }
+  }
+}
+print(head(Ice_Concentration_Totals))
+```
+
+```{r}
+# converts monthly averages to annual averages
+yrs <- 169
+mnth <- 12 
+ann_ave <- rep(0, yrs)
+for (n in (1: yrs)) {
+  for (m in (1:mnth)) {
+    ann_ave[n] <- ann_ave[n] + Ice_Concentration_Totals[(n-1) * mnth + m]
+  }
+  ann_ave[n] = ann_ave[n]/mnth
+}
+
+yr <- seq(1850, 2018, by = 1)
+```
+
+### Plot Data ###
+```{r}
+plot(yr, ann_ave, type="l", main = "Annual Averages of Ice Concentration",
+     xlab = "Year", ylab = "Average Ice Concentration")
+```
+
+## Annual Averages for Sea Surface Temp ##
+```{r}
+# set path and filename
+ncpath2 <- "/Users/geocog/Desktop/geog490/RData/"
+ncname2 <- "sst.mon.mean"  
+ncfname2 <- paste(ncpath2, ncname2, ".nc", sep="")
+dname2 <- "sst" 
+```
+
+```{r}
+# open a netCDF file
+ncin2 <- nc_open(ncfname2)
+```
+
+```{r}
+# get longitude and latitude
+lon2 <- ncvar_get(ncin2,"lon")
+nlon2 <- dim(lon2)
+lat2 <- ncvar_get(ncin2,"lat")
+nlat2 <- dim(lat2)
+```
+
+```{r}
+# get time
+time2 <- ncvar_get(ncin2,"time")
+tunits2 <- ncatt_get(ncin2,"time","units")
+nt2 <- dim(time2)
+
+Years <- seq(1850, (2019-0.008333), by = 0.08333)
+```
+
+```{r}
+# convert time -- split the time units string into fields
+tustr2 <- strsplit(tunits2$value, " ")
+ptime2 <- convertDateNcdf2R(time2, unlist(tustr2)[1], origin = 
+           as.POSIXct(unlist(tustr2)[3], tz = "UTC"), time.format = "%Y-%m-%d")
+```
+
+```{r}
+# get sst data
+sst_array <- ncvar_get(ncin2,dname2)
+dlname2 <- ncatt_get(ncin2,dname2,"long_name")
+dunits2 <- ncatt_get(ncin2,dname2,"units")
+fillvalue <- ncatt_get(ncin2,dname2,"_FillValue")
+dim(sst_array)
+```
+```{r}
+# close the netCDF file
+nc_close(ncin2)
+```
+
+```{r}
+# Calling function defined earlier 
+sst_area <- grid_cell_area(lat2, lon2)
+head(sst_area)
+```
+
+```{r}
+# get area-weighted average of temperature in Northern Hemisphere
+area_ave_sst <- rep(0, nt2)
+```
+
+```{r}
+# loop over times
+for (n in (1:nt2)) {
+  # loop over longitudes and latitudes
+  sum2 <- 0.0    # sum of weighted values
+  wsum2 <- 0.0   # sum of weights (areas)
+  for (j in (1:nlon2)) {
+    for (k in (1:nlat2)) {
+      if (!is.na(sst_array[j,k,n])) {
+        # grid point isn't missing (i.e. not ocean), so accumulate values
+        sum2 <- sum2 + sst_array[j,k,n] * sst_area[k]
+        wsum2 <- wsum2 + sst_area[k]
+        }
+    }
+  }
+  # calculate weighted average
+  area_ave_sst[n] <- sum2 / wsum2
+}
+print(head(area_ave_sst))
+```
+
+```{r}
+yrs <- 169
+mnth <- 12 
+ann_ave_sst <- rep(0, yrs)
+for (n in (1: yrs)) {
+  for (m in (1:mnth)) {
+    ann_ave_sst[n] <- ann_ave_sst[n] + area_ave_sst[(n-1) * mnth + m]
+  }
+  ann_ave_sst[n] = ann_ave_sst[n]/mnth
+}
+
+yr <- seq(1850, 2018, by = 1)
+```
+
+```{r}
+plot(yr, ann_ave_sst, type="l", main = "Annual Averages of Sea Surface Temperature",
+     xlab = "Year", ylab = "Degrees Celcius")
+```

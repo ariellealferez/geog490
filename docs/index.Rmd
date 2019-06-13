@@ -49,7 +49,7 @@ library(zoo)
 library(sf)
 ```
 
-# Part 1
+# Visualizing Long Term Averages #
 
 ## Mapping Long Term Average Sea Surface Temperature ## 
 ```{r}
@@ -81,6 +81,7 @@ mapTheme <- rasterTheme(region=brewer.pal(8,"Reds"))
 plt <- levelplot(august1, margin=F, par.settings=mapTheme, main = "Long Term Average SST - August 1981 to 2018")
 plt + latticeExtra::layer(sp.lines(world_outline, col="gray30", lwd=1))
 ```
+
 ### Map for February Averages ### 
 ```{r}
 mapTheme <- rasterTheme(region=brewer.pal(8,"Reds"))
@@ -91,6 +92,7 @@ plt + latticeExtra::layer(sp.lines(world_outline, col="gray30", lwd=1))
 Next we will create maps for Average Sea Ice Concentrations 
 
 ## Maps of Sea Ice Concentrations ##
+
 ```{r}
 icec_path <- "/Users/geocog/Desktop/geog490/RData/"
 icec_name <- "icec.mon.ltm.1981-2010.nc"
@@ -103,6 +105,7 @@ feb <- rotate(icec_feb)
 ```
 
 ### Map for August Averages ### 
+
 ```{r}
 # plot for August
 mapTheme <- rasterTheme(region=brewer.pal(8,"Blues"))
@@ -111,6 +114,7 @@ plt + latticeExtra::layer(sp.lines(world_outline, col="gray30", lwd=1))
 ```
 
 ### Map for February Averages ### 
+
 ```{r}
 # plot for Februarey
 mapTheme <- rasterTheme(region=brewer.pal(8,"Blues"))
@@ -118,7 +122,7 @@ plt <- levelplot(feb, margin=F, par.settings=mapTheme, main = "Long Term Mean Ic
 plt + latticeExtra::layer(sp.lines(world_outline, col="gray30", lwd=1))
 ```
 
-# Part 2
+# Annual Averages from 1850 #
 
 Now we will plot the yearly averages for both Sea Surface Temperature and Ice Concentration on a line graph to see how the values have changed since 1850.
 
@@ -176,6 +180,7 @@ nc_close(ncin)
 ```
 
 ### Set up for calculating area averages--define functions ###
+
 ```{r}
 # radians function (convert degrees to radians)
 radians <- function(x) {
